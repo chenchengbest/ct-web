@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.creazytooth.dao.cz.IOrgInfoDAO">
+  <resultMap id="BaseResultMap" type="com.creazytooth.model.cz.OrgInfo">
+    <id column="orgId" jdbcType="INTEGER" property="orgid" />
+    <result column="orgName" jdbcType="VARCHAR" property="orgname" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    orgId, orgName
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from CT_org
+    where orgId = #{orgid,jdbcType=INTEGER}
+  </select>
+  <insert id="insert" parameterType="com.creazytooth.model.cz.OrgInfo">
+    insert into CT_org (orgId, orgName)
+    values (#{orgid,jdbcType=INTEGER}, #{orgname,jdbcType=VARCHAR})
+  </insert>
+  <insert id="insertSelective" parameterType="com.creazytooth.model.cz.OrgInfo">
+    insert into CT_org
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="orgid != null">
+        orgId,
+      </if>
+      <if test="orgname != null">
+        orgName,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="orgid != null">
+        #{orgid,jdbcType=INTEGER},
+      </if>
+      <if test="orgname != null">
+        #{orgname,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.creazytooth.model.cz.OrgInfo">
+    update CT_org
+    <set>
+      <if test="orgname != null">
+        orgName = #{orgname,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where orgId = #{orgid,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.creazytooth.model.cz.OrgInfo">
+    update CT_org
+    set orgName = #{orgname,jdbcType=VARCHAR}
+    where orgId = #{orgid,jdbcType=INTEGER}
+  </update>
+
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+    delete from CT_org
+    where orgId = #{orgid,jdbcType=INTEGER}
+  </delete>
+
+</mapper>

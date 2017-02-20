@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/mvc
+       http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+
+    <!-- 自动扫描
+     !!在子容器（spring-mvc.xml），将Controller的注解排除掉
+     同时使用mvc的注入，以及service的注入、aop的注入会存在父子容器冲突的问题
+     原因ServletContextListener产生的是父容器，springMVC产生的是子容器，子容器Controller进行扫描装配时装配了@Service注解的实例，
+     而该实例理应由父容器进行初始化以保证事务的增强处理，所以此时得到的将是原样的Service（没有经过事务加强处理，故而没有事务处理能力。 -->
+    <context:component-scan base-package="com">
+        <context:include-filter type="annotation" expression="org.springframework.stereotype.Controller" />
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Service" />
+    </context:component-scan>
+    <!--前端控制器（DispatcherServlet）、请求到处理器映射（HandlerMapping）、
+   处理器适配器（HandlerAdapter）、视图解析器（ViewResolver）、
+   处理器或页面控制器（Controller）、验证器（Validator）、
+   命令对象（Command  请求参数绑定到的对象就叫命令对象）、
+   表单对象（Form Object 提供给表单展示和提交到的对象就叫表单对象）。-->
+    <!-- 自动扫描该包，使SpringMVC认为包下用了@controller注解的类是控制器 -->
+    <context:component-scan base-package="com.creazytooth.controller" />
+    <!--http请求jsonConverter 配置区 star-->
+       <!--避免IE执行AJAX时，返回JSON出现下载文件 -->
+    <mvc:annotation-driven>
+        <mvc:message-converters register-defaults="true">
+            <bean class="com.alibaba.fastjson.support.spring.FastJsonHttpMessageConverter">
+                <property name="supportedMediaTypes" value="text/html;charset=UTF-8"/>
+                <property name="features">
+                    <array>
+                        <value>WriteMapNullValue</value>
+                        <value>WriteNullStringAsEmpty</value>
+                    </array>
+                </property>
+            </bean>
+        </mvc:message-converters>
+    </mvc:annotation-driven>
+    <!--http请求jsonConverter 配置区 end-->
+   <!--请求拦截器配置区 star-->
+    <mvc:interceptors>
+        <!--&lt;!&ndash; 使用bean定义一个Interceptor，直接定义在mvc:interceptors根下面的Interceptor将拦截所有的请求 &ndash;&gt;-->
+        <!--<bean class="com.creazytooth.common.interceptor.SessionInterceptor"/>-->
+        <mvc:interceptor>
+            <mvc:mapping path="/user/*"/>
+            <!-- 定义在mvc:interceptor下面的表示是对特定的请求才进行拦截的 -->
+            <bean class="com.creazytooth.common.interceptor.LoginInterceptor"/>
+        </mvc:interceptor>
+    </mvc:interceptors>
+    <!--请求拦截器配置区 end-->
+    <!--配置视图解析器ViewResolver star-->
+    <mvc:resources mapping="/image/**" location="/WEB-INF/image/" />
+        <mvc:resources mapping="/js/**" location="/WEB-INF/js/" />
+        <mvc:resources mapping="/css/**" location="/WEB-INF/css/" />
+       <!-- 定义跳转的文件的前后缀 ，视图模式配置-->
+       <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+              <!-- 这里的配置我的理解是自动给后面action的方法return的字符串加上前缀和后缀，变成一个 可用的url地址 -->
+              <property name="prefix" value="/WEB-INF/view/" />
+              <property name="suffix" value=".jsp" />
+       </bean>
+    <!--配置视图解析器ViewResolver end-->
+    <!-- 配置文件上传，如果没有使用文件上传可以不用配置，当然如果不配，那么配置文件中也不必引入上传组件包 -->
+       <bean id="multipartResolver"
+             class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+              <!-- 默认编码 -->
+              <property name="defaultEncoding" value="utf-8" />
+              <!-- 文件大小最大值 -->
+              <property name="maxUploadSize" value="10485760000" />
+              <!-- 内存中的最大值 -->
+              <property name="maxInMemorySize" value="40960" />
+       </bean>
+</beans>

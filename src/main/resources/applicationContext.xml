@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+    <!--在mvc中会用到这个自动扫描的配置<context:annotation-config/>annotation-config-->
+    <!-- 自动扫描
+     !!在主容器中（applicationContext.xml），将Controller的注解排除掉
+     同时使用mvc的注入，以及service的注入、aop的注入会存在父子容器冲突的问题
+     原因ServletContextListener产生的是父容器，springMVC产生的是子容器，子容器Controller进行扫描装配时装配了@Service注解的实例，
+     而该实例理应由父容器进行初始化以保证事务的增强处理，所以此时得到的将是原样的Service（没有经过事务加强处理，故而没有事务处理能力。 -->
+    <context:component-scan base-package="com">
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller" />
+    </context:component-scan>
+    <!-- 引入配置文件 -->
+    <bean id="propertyConfigurer"
+          class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+           <property name="location" value="classpath:jdbc.properties" />
+    </bean>
+
+    <bean id="czDS" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+          destroy-method="close">
+       <property name="driverClass" value="${jdbc.cz.driver}" />
+       <property name="jdbcUrl" value="${jdbc.cz.url}" />
+       <property name="user" value="${jdbc.cz.username}" />
+       <property name="password" value="${jdbc.cz.password}" />
+        <!-- 指定连接数据库连接池的最小连接数 -->
+        <property name="minPoolSize" value="${jdbc.minPoolSize}" />
+        <!-- 指定连接数据库连接池的最大连接数 -->
+        <property name="maxPoolSize" value="${jdbc.maxPoolSize}" />
+        <!-- 指定连接数据库连接池的连接的最大空闲时间 -->
+        <property name="maxIdleTime" value="${jdbc.maxIdleTime}" />
+        <property name="acquireIncrement" value="${jdbc.acquireIncrement}" />
+        <property name="maxStatements" value="${jdbc.maxStatements}" />
+        <!-- 指定连接数据库连接池的初始化连接数 -->
+        <property name="initialPoolSize" value="${jdbc.initialPoolSize}" />
+        <property name="idleConnectionTestPeriod" value="${jdbc.idleConnectionTestPeriod}" />
+        <!-- 当连接失败时，尝试重新连接的次数 -->
+        <property name="acquireRetryAttempts" value="${jdbc.acquireRetryAttempts}" />
+        <property name="breakAfterAcquireFailure" value="${jdbc.breakAfterAcquireFailure}" />
+        <property name="testConnectionOnCheckout" value="${jdbc.testConnectionOnCheckout}" />
+    </bean>
+    <!-- spring和MyBatis完美整合，不需要mybatis的配置映射文件 -->
+    <bean id="czSqlSF" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="czDS" />
+        <!-- 自动扫描mapping.xml文件 -->
+        <property name="mapperLocations" value="classpath:modelmappers/cz/*.xml"/>
+    </bean>
+    <!-- DAO接口所在包名，Spring会自动查找其下的类 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer" >
+        <property name="basePackage" value="com.creazytooth.dao.cz" />
+        <property name="sqlSessionFactoryBeanName" value="czSqlSF"/>
+    </bean>
+    <!-- (事务管理)transaction manager, use JtaTransactionManager for global tx -->
+    <bean id="czTM"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager" >
+        <property name="dataSource" ref="czDS" />
+    </bean>
+    <!--事务配置-->
+    <tx:annotation-driven order="200"/>
+    <aop:config>
+        <!--把事务控制在Service层-->
+        <aop:pointcut id="czpc" expression="execution(public * com.creazytooth.impl.cz.*.*(..))" />
+        <aop:advisor pointcut-ref="czpc" advice-ref="czTX" />
+    </aop:config>
+    <tx:advice id="czTX" transaction-manager="czTM"  >
+        <tx:attributes>
+            <tx:method name="delete*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.Exception" no-rollback-for="java.lang.RuntimeException"/>
+            <tx:method name="insert*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.RuntimeException" />
+            <tx:method name="update*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.Exception" />
+            <tx:method name="add*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.Exception" />
+            <tx:method name="find*" propagation="SUPPORTS"/>
+            <tx:method name="get*" propagation="SUPPORTS"/>
+            <tx:method name="select*" propagation="SUPPORTS"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <bean id="testDS" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+          destroy-method="close">
+        <property name="driverClass" value="${jdbc.test.driver}" />
+        <property name="jdbcUrl" value="${jdbc.test.url}" />
+        <property name="user" value="${jdbc.test.username}" />
+        <property name="password" value="${jdbc.test.password}" />
+        <!-- 指定连接数据库连接池的最小连接数 -->
+        <property name="minPoolSize" value="${jdbc.minPoolSize}" />
+        <!-- 指定连接数据库连接池的最大连接数 -->
+        <property name="maxPoolSize" value="${jdbc.maxPoolSize}" />
+        <!-- 指定连接数据库连接池的连接的最大空闲时间 -->
+        <property name="maxIdleTime" value="${jdbc.maxIdleTime}" />
+        <property name="acquireIncrement" value="${jdbc.acquireIncrement}" />
+        <property name="maxStatements" value="${jdbc.maxStatements}" />
+        <!-- 指定连接数据库连接池的初始化连接数 -->
+        <property name="initialPoolSize" value="${jdbc.initialPoolSize}" />
+        <property name="idleConnectionTestPeriod" value="${jdbc.idleConnectionTestPeriod}" />
+        <!-- 当连接失败时，尝试重新连接的次数 -->
+        <property name="acquireRetryAttempts" value="${jdbc.acquireRetryAttempts}" />
+        <property name="breakAfterAcquireFailure" value="${jdbc.breakAfterAcquireFailure}" />
+        <property name="testConnectionOnCheckout" value="${jdbc.testConnectionOnCheckout}" />
+    </bean>
+    <!-- spring和MyBatis完美整合，不需要mybatis的配置映射文件 -->
+    <bean id="testSqlSF" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="testDS" />
+        <!-- 自动扫描mapping.xml文件 -->
+        <property name="mapperLocations" value="classpath:modelmappers/test/*.xml"/>
+    </bean>
+    <!-- DAO接口所在包名，Spring会自动查找其下的类 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer" >
+        <property name="basePackage" value="com.creazytooth.dao.test" />
+        <property name="sqlSessionFactoryBeanName" value="testSqlSF"/>
+    </bean>
+    <!-- (事务管理)transaction manager, use JtaTransactionManager for global tx -->
+    <bean id="testTM"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager" >
+        <property name="dataSource" ref="testDS" />
+    </bean>
+    <!---->
+    <tx:annotation-driven order="200"/>
+    <aop:config>
+        <!--把事务控制在Service层-->
+        <aop:pointcut id="testpc" expression="execution(public * com.creazytooth.impl.test.*.*(..))" />
+        <aop:advisor pointcut-ref="testpc" advice-ref="testTX" />
+    </aop:config>
+    <tx:advice id="testTX" transaction-manager="testTM"  >
+        <tx:attributes>
+            <tx:method name="delete*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.Exception" no-rollback-for="java.lang.RuntimeException"/>
+            <tx:method name="insert*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.RuntimeException" />
+            <tx:method name="update*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.Exception" />
+            <tx:method name="add*" propagation="REQUIRED" read-only="false"
+                       rollback-for="java.lang.Exception" />
+            <tx:method name="find*" propagation="SUPPORTS"/>
+            <tx:method name="get*" propagation="SUPPORTS"/>
+            <tx:method name="select*" propagation="SUPPORTS"/>
+        </tx:attributes>
+    </tx:advice>
+    <!--抽象日志处理-->
+    <bean id="logAspectBean" class="com.creazytooth.common.log.LogAspect"  />
+    <aop:config>
+        <aop:aspect id="logAspect" ref="logAspectBean" order="2" >
+            <aop:pointcut id="allMethod"
+                          expression="execution(* com.creazytooth.impl.*.*.*(..))"/>
+            <aop:before method="before" pointcut-ref="allMethod" />
+            <aop:around method="doAround" pointcut-ref="allMethod"/>
+            <aop:after-returning method="afterReturn" pointcut-ref="allMethod"/>
+            <aop:after method="after" pointcut-ref="allMethod"/>
+            <aop:after-throwing method="afterThrowing"  throwing = "e" pointcut-ref="allMethod"/>
+        </aop:aspect>
+    </aop:config>
+</beans>
